@@ -1,0 +1,10 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.example.biometric_auth_plugin">
+
+    <!-- Permitir el uso de BiometricPrompt -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+
+    <!-- Opcional: Indicar compatibilidad con hardware biométrico -->
+    <uses-permission android:name="android.hardware.fingerprint" />
+
+</manifest>
