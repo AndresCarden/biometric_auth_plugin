@@ -1,7 +1,7 @@
 name: biometric_auth_plugin
 description: "description: Un plugin de autenticación biométrica para Flutter compatible con Android e iOS."
 version: 0.0.1
-homepage: https://github.com/AndresCardenas215/biometric_auth_plugin
+homepage: https://pub.dev/packages/biometric_auth_plugin
 
 environment:
   sdk: ^3.5.3
