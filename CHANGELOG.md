@@ -1,3 +1,20 @@
+## 0.0.2 - Mejoras y Nuevas Características
+
+### 🚀 Nuevas Características:
+- **Detección de cambios en la biometría**: Verifica si las huellas digitales o datos biométricos han cambiado.
+- **Autenticación en segundo plano**: Permite la reautenticación automática en intervalos definidos.
+- **Soporte para personalización del diálogo**: Permite personalizar el título, subtítulo, descripción y botón negativo del cuadro de autenticación.
+- **Manejo mejorado de intentos fallidos**: Ahora se pueden configurar límites de intentos y manejar errores de forma más efectiva.
+
+### 🛠 Mejoras:
+- **Optimización del manejo de errores**: Se agregaron mensajes más detallados para los errores de autenticación.
+- **Compatibilidad mejorada**: Se corrigieron errores para garantizar mejor estabilidad en Android e iOS.
+- **Mejor control de flujo**: Se evitó que se envíen respuestas duplicadas en caso de múltiples intentos de autenticación.
+
+---
+📌 **Notas:**
+Esta versión mejora la experiencia de autenticación y agrega nuevas funcionalidades avanzadas. Se recomienda actualizar a esta versión para mayor seguridad y usabilidad.
+
 ## 0.0.1 - Primera Versión
 
 ### 🚀 Características:
@@ -18,4 +35,3 @@
 ---
 📌 **Notas:**  
 Esta es la versión inicial del plugin. Se recomienda probarlo en dispositivos físicos para garantizar compatibilidad total.
-

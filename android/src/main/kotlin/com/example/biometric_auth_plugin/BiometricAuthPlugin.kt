@@ -1,6 +1,8 @@
 package com.example.biometric_auth_plugin
 
 import android.app.Activity
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.annotation.NonNull
 import androidx.biometric.BiometricManager
@@ -13,11 +15,21 @@ import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.util.concurrent.Executor
+import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyProperties
+import java.security.KeyStore
+import javax.crypto.Cipher
+import javax.crypto.KeyGenerator
+import javax.crypto.SecretKey
 
 class BiometricAuthPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler {
   private lateinit var channel: MethodChannel
   private var activity: Activity? = null
   private lateinit var executor: Executor
+  private var resultInvoked = false
+  private var failedAttempts = 0
+  private val maxFailedAttempts = 5
+  private var isBlocked = false
 
   override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
     channel = MethodChannel(flutterPluginBinding.binaryMessenger, "biometric_auth_plugin")
@@ -27,28 +39,38 @@ class BiometricAuthPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
 
   override fun onAttachedToActivity(binding: ActivityPluginBinding) {
     activity = binding.activity
-    Log.d("BiometricAuth", "📌 Actividad adjuntada correctamente: ${activity?.localClassName}")
   }
 
   override fun onDetachedFromActivityForConfigChanges() {
     activity = null
-    Log.d("BiometricAuth", "📌 Actividad desvinculada por cambios de configuración.")
   }
 
   override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
     activity = binding.activity
-    Log.d("BiometricAuth", "📌 Actividad re-adjuntada después de cambio de configuración.")
   }
 
   override fun onDetachedFromActivity() {
     activity = null
-    Log.d("BiometricAuth", "📌 Actividad desvinculada completamente.")
   }
 
   override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
+    resultInvoked = false
+    failedAttempts = 0
+
     when (call.method) {
-      "authenticate" -> authenticate(result)
+      "authenticate" -> {
+        val title = call.argument<String>("title") ?: "Autenticación Biométrica"
+        val subtitle = call.argument<String>("subtitle") ?: "Usa tu huella o rostro"
+        val description = call.argument<String>("description") ?: "Por favor autentícate."
+        val negativeButtonText = call.argument<String>("negativeButtonText") ?: "Cancelar"
+        val allowDeviceCredentials = call.argument<Boolean>("allowDeviceCredentials") ?: false
+        authenticate(result, title, subtitle, description, negativeButtonText, allowDeviceCredentials)
+      }
       "isBiometricAvailable" -> result.success(isBiometricAvailable())
+      "getAvailableBiometricTypes" -> result.success(getAvailableBiometricTypes())
+      "checkBiometricChanges" -> result.success(detectBiometricChanges())
+      "enableBackgroundAuthentication" -> enableBackgroundAuthentication()
+      "getBiometricStrengthLevel" -> result.success(getBiometricStrengthLevel()) // 🔄 Corrección agregada aquí
       else -> result.notImplemented()
     }
   }
@@ -58,44 +80,115 @@ class BiometricAuthPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
     return biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS
   }
 
-  private fun authenticate(result: MethodChannel.Result) {
-    val activity = this.activity as? FragmentActivity
-    if (activity == null) {
-      Log.e("BiometricAuth", "❌ Error: No se pudo obtener la actividad.")
-      result.error("ACTIVITY_ERROR", "No se pudo obtener la actividad.", null)
+  private fun getAvailableBiometricTypes(): List<String> {
+    val biometricManager = BiometricManager.from(activity ?: return emptyList())
+    val availableTypes = mutableListOf<String>()
+
+    if (biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS) {
+      availableTypes.add("fingerprint")
+    }
+    // Comprobamos si BIOMETRIC_WEAK está disponible en la versión actual del SDK
+    try {
+      val biometricWeak = BiometricManager.Authenticators.BIOMETRIC_WEAK
+      if (biometricManager.canAuthenticate(biometricWeak) == BiometricManager.BIOMETRIC_SUCCESS) {
+        availableTypes.add("face")
+      }
+    } catch (e: NoSuchFieldError) {
+      Log.w("BiometricAuth", "BIOMETRIC_WEAK no disponible en esta versión del SDK.")
+    }
+
+    if (biometricManager.canAuthenticate(BiometricManager.Authenticators.DEVICE_CREDENTIAL) == BiometricManager.BIOMETRIC_SUCCESS) {
+      availableTypes.add("pin")
+    }
+
+    return availableTypes
+  }
+
+  private fun getBiometricStrengthLevel(): String {
+    val biometricManager = BiometricManager.from(activity ?: return "unknown")
+    return when (biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)) {
+      BiometricManager.BIOMETRIC_SUCCESS -> "strong"
+      BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> "none_enrolled"
+      BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE -> "no_hardware"
+      BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE -> "hw_unavailable"
+      else -> "unknown"
+    }
+  }
+
+  private fun detectBiometricChanges(): Boolean {
+    val biometricManager = BiometricManager.from(activity ?: return false)
+    return biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS
+  }
+
+  private fun enableBackgroundAuthentication() {
+    val handler = Handler(Looper.getMainLooper())
+
+    val runnable = object : Runnable {
+      override fun run() {
+        authenticate(
+          object : MethodChannel.Result {
+            override fun success(result: Any?) {}
+            override fun error(errorCode: String, errorMessage: String?, errorDetails: Any?) {}
+            override fun notImplemented() {}
+          },
+          "Autenticación Requerida",
+          "Verifica tu identidad",
+          "Se necesita reautenticación.",
+          "Cancelar",
+          false
+        )
+        handler.postDelayed(this, 60000) // Verifica cada 60 segundos
+      }
+    }
+    handler.post(runnable)
+  }
+
+  private fun authenticate(
+    result: MethodChannel.Result,
+    title: String,
+    subtitle: String,
+    description: String,
+    negativeButtonText: String,
+    allowDeviceCredentials: Boolean
+  ) {
+    if (isBlocked) {
+      result.error("BLOCKED", "Autenticación bloqueada por múltiples intentos fallidos. Intente más tarde.", null)
       return
     }
 
-    val biometricManager = BiometricManager.from(activity)
-    val canAuthenticate = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)
-    if (canAuthenticate != BiometricManager.BIOMETRIC_SUCCESS) {
-      Log.e("BiometricAuth", "❌ Error: El hardware biométrico no está disponible o configurado.")
-      result.error("BIOMETRIC_ERROR", "El hardware biométrico no está disponible o configurado.", null)
-      return
+    val activity = this.activity as? FragmentActivity ?: return
+    val authenticators = if (allowDeviceCredentials) {
+      BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
+    } else {
+      BiometricManager.Authenticators.BIOMETRIC_STRONG
     }
 
     val promptInfo = BiometricPrompt.PromptInfo.Builder()
-      .setTitle("Autenticación Biométrica")
-      .setSubtitle("Usa tu huella o rostro para continuar")
-      .setDescription("Por favor autentícate para continuar.")
-      .setNegativeButtonText("Cancelar")
+      .setTitle(title)
+      .setSubtitle(subtitle)
+      .setDescription(description)
+      .setNegativeButtonText(negativeButtonText)
+      .apply {
+        if (allowDeviceCredentials) setDeviceCredentialAllowed(true)
+      }
       .build()
 
     val biometricPrompt = BiometricPrompt(activity, executor, object : BiometricPrompt.AuthenticationCallback() {
       override fun onAuthenticationSucceeded(authResult: BiometricPrompt.AuthenticationResult) {
-        Log.d("BiometricAuth", "✅ Autenticación exitosa.")
-        val cryptoObject = authResult.cryptoObject
-        Log.d("BiometricAuth", "CryptoObject: $cryptoObject")
+        failedAttempts = 0
         result.success(true)
       }
 
       override fun onAuthenticationFailed() {
-        Log.w("BiometricAuth", "❌ Falló la autenticación: Datos biométricos no reconocidos.")
-        result.error("AUTH_FAILED", "Datos biométricos no reconocidos. Intente nuevamente.", null)
+        failedAttempts++
+        if (failedAttempts >= maxFailedAttempts) {
+          isBlocked = true
+          Handler(Looper.getMainLooper()).postDelayed({ isBlocked = false }, 30000)
+          result.error("TOO_MANY_ATTEMPTS", "Se alcanzó el límite de intentos. Inténtelo en 30 segundos.", null)
+        }
       }
 
       override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-        Log.e("BiometricAuth", "⚠️ Error de autenticación ($errorCode): $errString")
         result.error("AUTH_ERROR", errString.toString(), errorCode)
       }
     })

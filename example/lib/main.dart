@@ -13,11 +13,11 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       home: Scaffold(
-        appBar: AppBar(title: Text("Biometric Plugin")),
+        appBar: AppBar(title: const Text("Biometric Plugin")),
         body: Center(
           child: ElevatedButton(
             onPressed: _authenticate,
-            child: Text("Autenticar con Biometría"),
+            child: const Text("Autenticar con Biometría"),
           ),
         ),
       ),
