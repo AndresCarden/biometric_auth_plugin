@@ -70,7 +70,7 @@ class BiometricAuthPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
       "getAvailableBiometricTypes" -> result.success(getAvailableBiometricTypes())
       "checkBiometricChanges" -> result.success(detectBiometricChanges())
       "enableBackgroundAuthentication" -> enableBackgroundAuthentication()
-      "getBiometricStrengthLevel" -> result.success(getBiometricStrengthLevel()) // 🔄 Corrección agregada aquí
+      "getBiometricStrengthLevel" -> result.success(getBiometricStrengthLevel())
       else -> result.notImplemented()
     }
   }

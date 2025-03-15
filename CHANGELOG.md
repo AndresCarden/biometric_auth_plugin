@@ -1,3 +1,21 @@
+## 0.0.3 - Soporte Completo para iOS
+
+### 🚀 Nuevas Características:
+- **Soporte para credenciales del dispositivo (PIN, patrón, contraseña)** en iOS.
+- **Detección de cambios biométricos**: Verifica si los datos biométricos han cambiado en iOS.
+- **Autenticación en segundo plano**: Permite la reautenticación automática en intervalos definidos en iOS.
+- **Personalización del diálogo de autenticación**: Personaliza el título, subtítulo, descripción y botón negativo en iOS.
+- **Manejo mejorado de intentos fallidos**: Se agregaron límites de intentos fallidos con control más eficiente en iOS.
+
+### 🛠 Mejoras:
+- **Optimización del manejo de errores**: Se agregaron mensajes más detallados para los errores de autenticación en iOS.
+- **Compatibilidad mejorada**: Se corrigieron errores para garantizar mejor estabilidad en iOS.
+- **Mejor control de flujo**: Se evitó que se envíen respuestas duplicadas en caso de múltiples intentos de autenticación.
+
+---
+📌 **Notas:**
+Esta versión agrega compatibilidad total con iOS, permitiendo autenticación con Face ID, Touch ID y credenciales del dispositivo. Se recomienda actualizar a esta versión para una mejor seguridad y experiencia de usuario.
+
 ## 0.0.2 - Mejoras y Nuevas Características
 
 ### 🚀 Nuevas Características:
@@ -35,3 +53,4 @@ Esta versión mejora la experiencia de autenticación y agrega nuevas funcionali
 ---
 📌 **Notas:**  
 Esta es la versión inicial del plugin. Se recomienda probarlo en dispositivos físicos para garantizar compatibilidad total.
+
